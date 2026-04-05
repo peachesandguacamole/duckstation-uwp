@@ -29,6 +29,11 @@
 #include <share.h>
 #include <shlobj.h>
 #include <winioctl.h>
+#if defined(_UWP)
+#include <winrt/base.h>
+#include <winrt/Windows.ApplicationModel.h>
+#include <winrt/Windows.Storage.h>
+#endif
 #else
 #include <dirent.h>
 #include <errno.h>
@@ -693,7 +698,7 @@ std::vector<std::string> FileSystem::GetRootDirectoryList()
 {
   std::vector<std::string> results;
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(_UWP)
   char buf[256];
   const DWORD size = GetLogicalDriveStringsA(sizeof(buf), buf);
   if (size != 0 && size < (sizeof(buf) - 1))
@@ -705,6 +710,28 @@ std::vector<std::string> FileSystem::GetRootDirectoryList()
       results.emplace_back(ptr, len);
       ptr += len + 1u;
     }
+  }
+#elif defined(_UWP)
+  // Use WinRT APIs to enumerate only accessible locations in the UWP sandbox.
+  if (const auto install_location = winrt::Windows::ApplicationModel::Package::Current().InstalledLocation(); install_location)
+  {
+    auto path = winrt::to_string(install_location.Path());
+    if (!path.empty())
+      results.push_back(std::move(path));
+  }
+  if (const auto local_location = winrt::Windows::Storage::ApplicationData::Current().LocalFolder(); local_location)
+  {
+    auto path = winrt::to_string(local_location.Path());
+    if (!path.empty())
+      results.push_back(std::move(path));
+  }
+  const auto devices = winrt::Windows::Storage::KnownFolders::RemovableDevices();
+  const auto folders_task(devices.GetFoldersAsync());
+  for (const auto& storage_folder : folders_task.get())
+  {
+    auto path = winrt::to_string(storage_folder.Path());
+    if (!path.empty())
+      results.push_back(std::move(path));
   }
 #else
   const char* home_path = std::getenv("HOME");
