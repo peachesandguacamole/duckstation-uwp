@@ -52,7 +52,10 @@ Log_SetChannel(FileSystem);
 // Use the *FromApp equivalents which go through the app broker.
 #ifdef _UWP
 #define CreateFileW CreateFileFromAppW
+#define CreateDirectoryW CreateDirectoryFromAppW
+#define DeleteFileW DeleteFileFromAppW
 #define GetFileAttributesW(path) WrappedGetFileAttributesW(path)
+#define MoveFileExW(oldp, newp, flags) WrappedMoveFileExW(oldp, newp, flags)
 
 static inline DWORD WrappedGetFileAttributesW(LPCWSTR path)
 {
@@ -60,6 +63,12 @@ static inline DWORD WrappedGetFileAttributesW(LPCWSTR path)
   if (!GetFileAttributesExFromAppW(path, GetFileExInfoStandard, &fad))
     return INVALID_FILE_ATTRIBUTES;
   return fad.dwFileAttributes;
+}
+
+static inline BOOL WrappedMoveFileExW(LPCWSTR oldPath, LPCWSTR newPath, DWORD /*flags*/)
+{
+  // MoveFileFromAppW doesn't support flags, but handles the common rename case.
+  return MoveFileFromAppW(oldPath, newPath);
 }
 #endif
 
