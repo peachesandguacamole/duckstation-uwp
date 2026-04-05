@@ -48,6 +48,21 @@
 
 Log_SetChannel(FileSystem);
 
+// On UWP, standard Win32 file APIs are blocked by the sandbox.
+// Use the *FromApp equivalents which go through the app broker.
+#ifdef _UWP
+#define CreateFileW CreateFileFromAppW
+#define GetFileAttributesW(path) WrappedGetFileAttributesW(path)
+
+static inline DWORD WrappedGetFileAttributesW(LPCWSTR path)
+{
+  WIN32_FILE_ATTRIBUTE_DATA fad;
+  if (!GetFileAttributesExFromAppW(path, GetFileExInfoStandard, &fad))
+    return INVALID_FILE_ATTRIBUTES;
+  return fad.dwFileAttributes;
+}
+#endif
+
 #ifndef __ANDROID__
 
 #ifdef _WIN32
