@@ -62,11 +62,10 @@
               <uap:FileType ContentType="application/x-psf">.minipsf</uap:FileType>
               <uap:FileType ContentType="audio/x-mpegurl">.m3u</uap:FileType>
               <uap:FileType ContentType="application/x-ps-memory-card">.mcd</uap:FileType>
-              <uap:FileType ContentType="application/octet-stream">.bin</uap:FileType>
-              <uap:FileType ContentType="application/octet-stream">.img</uap:FileType>
-              <uap:FileType ContentType="application/octet-stream">.pbp</uap:FileType>
-              <uap:FileType ContentType="application/octet-stream">.mdf</uap:FileType>
-              <uap:FileType ContentType="application/x-executable">.exe</uap:FileType>
+              <uap:FileType ContentType="application/x-raw-disk-image">.bin</uap:FileType>
+              <uap:FileType ContentType="application/x-raw-disk-image">.img</uap:FileType>
+              <uap:FileType ContentType="application/x-pbp">.pbp</uap:FileType>
+              <uap:FileType ContentType="application/x-mdf">.mdf</uap:FileType>
             </uap:SupportedFileTypes>
           </uap:FileTypeAssociation>
         </uap:Extension>
