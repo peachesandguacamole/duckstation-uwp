@@ -1,0 +1,78 @@
+name: Build DuckStation UWP
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 120
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Cache Dependencies
+      id: cache-deps
+      uses: actions/cache@v4
+      with:
+        path: dep/msvc/deps-x64
+        key: deps-${{ hashFiles('scripts/build-dependencies-windows-x64.bat') }}
+
+    - name: Build X64 Dependencies
+      if: steps.cache-deps.outputs.cache-hit != 'true'
+      env:
+        DEBUG: 0
+      run: scripts/build-dependencies-windows-x64.bat
+
+    - name: Tag as preview build
+      shell: cmd
+      run: |
+        echo #pragma once > src/scmversion/tag.h
+        echo #define SCM_RELEASE_ASSET "duckstation-uwp.zip" >> src/scmversion/tag.h
+        echo #define SCM_RELEASE_TAGS {"latest", "preview"} >> src/scmversion/tag.h
+        echo #define SCM_RELEASE_TAG "preview" >> src/scmversion/tag.h
+
+    - name: Update RC version fields
+      shell: cmd
+      run: |
+        cd src\scmversion
+        call update_rc_version.bat
+        cd ..\..
+        git update-index --assume-unchanged src/duckstation-qt/duckstation-qt.rc
+        git update-index --assume-unchanged src/duckstation-nogui/duckstation-nogui.rc
+
+    - name: Create self-signed certificate
+      shell: pwsh
+      run: |
+        $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=irixaligned" -KeyUsage DigitalSignature -FriendlyName "DuckStation UWP" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+        $password = ConvertTo-SecureString -String "duckstation" -Force -AsPlainText
+        Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" -FilePath "duckstation-uwp_TemporaryKey.pfx" -Password $password
+        echo "PFX_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+
+    - name: Compile x64 ReleaseUWP
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+        msbuild duckstation.sln -t:Build -p:Platform=x64;Configuration=ReleaseUWP
+
+    - name: Create appx package
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+        msbuild src/duckstation-uwp/duckstation-uwp.vcxproj /p:Configuration=ReleaseUWP /p:Platform=x64 /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxBundle=Never /p:AppxPackageDir=..\..\AppPackages\ /p:PackageCertificateKeyFile=..\..\duckstation-uwp_TemporaryKey.pfx /p:PackageCertificatePassword=duckstation /p:GenerateAppxPackageOnBuild=true
+
+    - name: Upload appx artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: duckstation-uwp-appx
+        path: AppPackages/**/*.appx
+
+    - name: Upload release zip (fallback)
+      uses: actions/upload-artifact@v4
+      with:
+        name: duckstation-uwp-bin
+        path: bin/x64/
+        if-no-files-found: warn
