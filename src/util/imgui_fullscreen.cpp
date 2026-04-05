@@ -1799,8 +1799,13 @@ void ImGuiFullscreen::PopulateFileSelectorItems()
 
     std::string parent_path;
     std::string::size_type sep_pos = s_file_selector_current_directory.rfind(FS_OSPATH_SEPARATOR_CHARACTER);
-    if (sep_pos != std::string::npos)
+    if (sep_pos != std::string::npos && sep_pos != (s_file_selector_current_directory.size() - 1))
+    {
       parent_path = Path::Canonicalize(s_file_selector_current_directory.substr(0, sep_pos));
+      // Ensure drive roots keep their trailing backslash (e.g. "E:\")
+      if (parent_path.find(FS_OSPATH_SEPARATOR_CHARACTER) == std::string::npos)
+        parent_path.push_back(FS_OSPATH_SEPARATOR_CHARACTER);
+    }
 
     s_file_selector_items.emplace_back(ICON_FA_FOLDER_OPEN "  <Parent Directory>", std::move(parent_path), false);
     std::sort(results.begin(), results.end(), [](const FILESYSTEM_FIND_DATA& lhs, const FILESYSTEM_FIND_DATA& rhs) {
@@ -1843,8 +1848,10 @@ void ImGuiFullscreen::PopulateFileSelectorItems()
 
 void ImGuiFullscreen::SetFileSelectorDirectory(std::string dir)
 {
-  while (!dir.empty() && dir.back() == FS_OSPATH_SEPARATOR_CHARACTER)
-    dir.erase(dir.size() - 1);
+  // Strip trailing separators, but preserve the one on drive roots (e.g. "E:\")
+  while (!dir.empty() && dir.back() == FS_OSPATH_SEPARATOR_CHARACTER &&
+         dir.find(FS_OSPATH_SEPARATOR_CHARACTER) != (dir.size() - 1))
+    dir.pop_back();
 
   s_file_selector_current_directory = std::move(dir);
   PopulateFileSelectorItems();
