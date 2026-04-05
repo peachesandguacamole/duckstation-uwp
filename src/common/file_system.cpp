@@ -1114,7 +1114,12 @@ static u32 RecursiveFindFiles(const char* origin_path, const char* parent_path, 
   std::string utf8_filename;
   utf8_filename.reserve((sizeof(wfd.cFileName) / sizeof(wfd.cFileName[0])) * 2);
 
+#ifdef _UWP
+  const HANDLE hFind = FindFirstFileExFromAppW(StringUtil::UTF8StringToWideString(search_dir).c_str(),
+    FindExInfoBasic, &wfd, FindExSearchNameMatch, nullptr, 0);
+#else
   const HANDLE hFind = FindFirstFileW(StringUtil::UTF8StringToWideString(search_dir).c_str(), &wfd);
+#endif
   if (hFind == INVALID_HANDLE_VALUE)
     return 0;
 
@@ -1435,7 +1440,11 @@ bool FileSystem::DirectoryIsEmpty(const char* path)
   wpath += L"\\*";
 
   WIN32_FIND_DATAW wfd;
+#ifdef _UWP
+  HANDLE hFind = FindFirstFileExFromAppW(wpath.c_str(), FindExInfoBasic, &wfd, FindExSearchNameMatch, nullptr, 0);
+#else
   HANDLE hFind = FindFirstFileW(wpath.c_str(), &wfd);
+#endif
 
   if (hFind == INVALID_HANDLE_VALUE)
     return true;
