@@ -1821,6 +1821,8 @@ void ImGuiFullscreen::PopulateFileSelectorItems()
     for (const FILESYSTEM_FIND_DATA& fd : results)
     {
       std::string full_path =
+        (!s_file_selector_current_directory.empty() && s_file_selector_current_directory.back() == FS_OSPATH_SEPARATOR_CHARACTER) ?
+        fmt::format("{}{}", s_file_selector_current_directory, fd.FileName) :
         fmt::format("{}" FS_OSPATH_SEPARATOR_STR "{}", s_file_selector_current_directory, fd.FileName);
 
       if (fd.Attributes & FILESYSTEM_FILE_ATTRIBUTE_DIRECTORY)
