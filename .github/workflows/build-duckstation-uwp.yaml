@@ -70,6 +70,13 @@ jobs:
         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
         msbuild src/duckstation-uwp/duckstation-uwp.vcxproj /p:Configuration=ReleaseUWP /p:Platform=x64 /p:WindowsTargetPlatformVersion=10.0.22621.0 /p:SolutionDir=%CD%\ /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxBundle=Never /p:AppxPackageDir=..\..\AppPackages\ /p:PackageCertificateKeyFile=..\..\duckstation-uwp_TemporaryKey.pfx /p:PackageCertificatePassword=duckstation /p:GenerateAppxPackageOnBuild=true
 
+    - name: Sign appx package
+      shell: pwsh
+      run: |
+        $appx = Get-ChildItem -Recurse -Filter *.appx | Select-Object -First 1
+        Write-Host "Signing $($appx.FullName) with thumbprint $env:PFX_THUMBPRINT"
+        & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /fd sha256 /sha1 $env:PFX_THUMBPRINT /sm $appx.FullName
+
     - name: Upload appx artifact
       uses: actions/upload-artifact@v4
       with:
