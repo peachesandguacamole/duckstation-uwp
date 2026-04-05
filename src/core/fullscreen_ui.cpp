@@ -2313,6 +2313,12 @@ void FullscreenUI::DrawFolderSetting(SettingsInterface* bsi, const char* title, 
                        auto lock = Host::GetSettingsLock();
                        SettingsInterface* bsi = GetEditingSettingsInterface(game_settings);
                        std::string relative_path(Path::MakeRelative(dir, EmuFolders::DataRoot));
+                       // If MakeRelative produced a path without a separator (e.g. "E:"),
+                       // it's on a different drive — store the absolute path instead to
+                       // avoid Windows resolving "E:" as "current dir on E:" (LocalState).
+                       if (relative_path.find(FS_OSPATH_SEPARATOR_CHARACTER) == std::string::npos &&
+                           dir.find(FS_OSPATH_SEPARATOR_CHARACTER) != std::string::npos)
+                         relative_path = dir;
                        bsi->SetStringValue(section.c_str(), key.c_str(), relative_path.c_str());
                        SetSettingsChanged(bsi);
 
