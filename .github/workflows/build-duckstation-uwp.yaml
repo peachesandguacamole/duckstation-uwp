@@ -74,8 +74,8 @@ jobs:
       shell: pwsh
       run: |
         $appx = Get-ChildItem -Recurse -Filter *.appx | Select-Object -First 1
-        Write-Host "Signing $($appx.FullName) with thumbprint $env:PFX_THUMBPRINT"
-        & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /fd sha256 /sha1 $env:PFX_THUMBPRINT /sm $appx.FullName
+        Write-Host "Signing $($appx.FullName)"
+        & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /fd sha256 /f "duckstation-uwp_TemporaryKey.pfx" /p "duckstation" $appx.FullName
 
     - name: Upload appx artifact
       uses: actions/upload-artifact@v4
