@@ -62,6 +62,7 @@ jobs:
           exit /b 1
         )
         echo "duckstation-uwp.exe built successfully"
+        exit /b 0
 
     - name: Create appx package
       shell: cmd
