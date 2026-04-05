@@ -26,6 +26,8 @@
 
 #if defined(_WIN32)
 #include "windows_headers.h"
+#include <io.h>
+#include <fcntl.h>
 #include <share.h>
 #include <shlobj.h>
 #include <winioctl.h>
@@ -800,7 +802,58 @@ std::string Path::Combine(const std::string_view& base, const std::string_view& 
 
 std::FILE* FileSystem::OpenCFile(const char* filename, const char* mode, Error* error)
 {
-#ifdef _WIN32
+#ifdef _UWP
+  // On UWP, _wfopen_s is blocked for paths outside the sandbox.
+  // Use CreateFileFromAppW which goes through the app broker.
+  const std::wstring wfilename(StringUtil::UTF8StringToWideString(filename));
+  if (wfilename.empty())
+    return nullptr;
+
+  DWORD access = 0, creation = 0, share = FILE_SHARE_READ;
+  bool read = false, write = false;
+  for (const char* p = mode; *p; p++)
+  {
+    if (*p == 'r') { read = true; }
+    else if (*p == 'w') { write = true; }
+    else if (*p == 'a') { write = true; }
+    else if (*p == '+') { read = true; write = true; }
+  }
+  if (read && write) { access = GENERIC_READ | GENERIC_WRITE; share = 0; }
+  else if (write) { access = GENERIC_WRITE; share = 0; }
+  else { access = GENERIC_READ; share = FILE_SHARE_READ; }
+
+  if (strchr(mode, 'w')) creation = CREATE_ALWAYS;
+  else if (strchr(mode, 'a')) creation = OPEN_ALWAYS;
+  else if (write) creation = OPEN_EXISTING;
+  else creation = OPEN_EXISTING;
+
+  HANDLE hFile = CreateFileFromAppW(wfilename.c_str(), access, share, nullptr, creation, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if (hFile == INVALID_HANDLE_VALUE)
+  {
+    Error::SetWin32(error, GetLastError());
+    return nullptr;
+  }
+
+  if (strchr(mode, 'a'))
+    SetFilePointer(hFile, 0, nullptr, FILE_END);
+
+  int fd = _open_osfhandle(reinterpret_cast<intptr_t>(hFile), (write ? 0 : _O_RDONLY));
+  if (fd < 0)
+  {
+    CloseHandle(hFile);
+    return nullptr;
+  }
+
+  const char* crt_mode = (read && write) ? (strchr(mode, 'w') ? "w+b" : "r+b") :
+                          write ? (strchr(mode, 'a') ? "ab" : "wb") : "rb";
+  std::FILE* fp = _fdopen(fd, crt_mode);
+  if (!fp)
+  {
+    _close(fd);
+    return nullptr;
+  }
+  return fp;
+#elif defined(_WIN32)
   const std::wstring wfilename(StringUtil::UTF8StringToWideString(filename));
   const std::wstring wmode(StringUtil::UTF8StringToWideString(mode));
   if (!wfilename.empty() && !wmode.empty())
