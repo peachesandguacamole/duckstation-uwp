@@ -1085,7 +1085,10 @@ void FullscreenUI::DoToggleFullscreen()
 
 void FullscreenUI::SwitchToLanding()
 {
-  s_current_main_window = MainWindowType::Landing;
+  if (Host::GetBaseBoolSettingValue("Main", "StartInGameList", false))
+    s_current_main_window = MainWindowType::GameList;
+  else
+    s_current_main_window = MainWindowType::Landing;
   QueueResetFocus();
 }
 
@@ -2698,6 +2701,9 @@ void FullscreenUI::DrawInterfaceSettingsPage()
 
   MenuHeading(FSUI_CSTR("Behavior"));
 
+  DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_LIST, "Start In Game List"),
+                    FSUI_CSTR("Boots directly into the game list instead of the landing page."), "Main",
+                    "StartInGameList", false);
   DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_PAUSE, "Pause On Start"),
                     FSUI_CSTR("Pauses the emulator when a game is started."), "Main", "StartPaused", false);
   DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_VIDEO, "Pause On Focus Loss"),
