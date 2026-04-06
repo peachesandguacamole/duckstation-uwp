@@ -803,9 +803,18 @@ std::string Path::Combine(const std::string_view& base, const std::string_view& 
 std::FILE* FileSystem::OpenCFile(const char* filename, const char* mode, Error* error)
 {
 #ifdef _UWP
-  // On UWP, _wfopen_s is blocked for paths outside the sandbox.
-  // Use CreateFileFromAppW which goes through the app broker.
+  // On UWP, _wfopen_s is blocked for paths outside the sandbox (e.g. removable storage).
+  // Try _wfopen_s first (works for LocalState), fall back to CreateFileFromAppW for brokered paths.
   const std::wstring wfilename(StringUtil::UTF8StringToWideString(filename));
+  const std::wstring wmode(StringUtil::UTF8StringToWideString(mode));
+  if (!wfilename.empty() && !wmode.empty())
+  {
+    std::FILE* fp;
+    if (_wfopen_s(&fp, wfilename.c_str(), wmode.c_str()) == 0 && fp)
+      return fp;
+  }
+
+  // _wfopen_s failed — try CreateFileFromAppW for brokered access.
   if (wfilename.empty())
     return nullptr;
 
