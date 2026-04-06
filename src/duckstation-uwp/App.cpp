@@ -1076,7 +1076,8 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
     // Ensure log is flushed.
     Log::SetFileOutputParams(false, nullptr);
 
-    s_base_settings_interface.reset();
+    // Flush settings via destructor if dirty.
+    WinRTHost::SaveSettings();
   }
 
   void SetWindow(CoreWindow const& window) { window.CharacterReceived({this, &App::OnKeyInput}); }
