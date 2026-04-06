@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
+#include <winrt/Windows.ApplicationModel.h>
 #include <winrt/Windows.ApplicationModel.Activation.h>
 #include <winrt/Windows.ApplicationModel.Core.h>
 #include <winrt/Windows.UI.Core.h>
@@ -904,9 +905,19 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
 
   IFrameworkView CreateView() { return *this; }
 
+  void OnSuspending(const IInspectable&, const winrt::Windows::ApplicationModel::SuspendingEventArgs& args)
+  {
+    // Xbox suspends apps when backgrounded and may terminate without warning.
+    // Save settings while we still have ~5 seconds.
+    auto deferral = args.SuspendingOperation().GetDeferral();
+    WinRTHost::SaveSettings();
+    deferral.Complete();
+  }
+
   void Initialize(CoreApplicationView const& v)
   {
     v.Activated({this, &App::OnActivate});
+    CoreApplication::Suspending({this, &App::OnSuspending});
 
     // Setup folders
     const std::string program_path = FileSystem::GetProgramPath();
@@ -1049,6 +1060,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
       auto asyncOperation = winrt::Windows::System::Launcher::LaunchUriAsync(m_uri);
       asyncOperation.Completed([](winrt::Windows::Foundation::IAsyncOperation<bool> const& sender,
                                   winrt::Windows::Foundation::AsyncStatus const asyncStatus) {
+        WinRTHost::SaveSettings();
         WinRTHost::StopCPUThread();
         CoreApplication::Exit();
         return;
@@ -1056,6 +1068,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
     }
     else
     {
+      WinRTHost::SaveSettings();
       WinRTHost::StopCPUThread();
       CoreApplication::Exit();
     }
@@ -1063,7 +1076,7 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView>
     // Ensure log is flushed.
     Log::SetFileOutputParams(false, nullptr);
 
-    //s_base_settings_interface.reset();
+    s_base_settings_interface.reset();
   }
 
   void SetWindow(CoreWindow const& window) { window.CharacterReceived({this, &App::OnKeyInput}); }

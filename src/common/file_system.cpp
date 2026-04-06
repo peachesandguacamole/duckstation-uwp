@@ -67,9 +67,16 @@ static inline DWORD WrappedGetFileAttributesW(LPCWSTR path)
   return fad.dwFileAttributes;
 }
 
-static inline BOOL WrappedMoveFileExW(LPCWSTR oldPath, LPCWSTR newPath, DWORD /*flags*/)
+static inline BOOL WrappedMoveFileExW(LPCWSTR oldPath, LPCWSTR newPath, DWORD flags)
 {
-  // MoveFileFromAppW doesn't support flags, but handles the common rename case.
+  // MoveFileFromAppW doesn't support MOVEFILE_REPLACE_EXISTING.
+  // If the destination exists, delete it first, then move.
+  if (flags & MOVEFILE_REPLACE_EXISTING)
+  {
+    WIN32_FILE_ATTRIBUTE_DATA fad;
+    if (GetFileAttributesExFromAppW(newPath, GetFileExInfoStandard, &fad))
+      DeleteFileFromAppW(newPath);
+  }
   return MoveFileFromAppW(oldPath, newPath);
 }
 #endif
